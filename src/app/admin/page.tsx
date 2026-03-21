@@ -1,3 +1,4 @@
+import type React from "react";
 import Link from "next/link";
 import {
   isAdminAuthenticated,
@@ -26,7 +27,7 @@ import {
   moveSourceDownAction,
 } from "@/app/admin/actions";
 
-export default async function AdminPage(): Promise<JSX.Element> {
+export default async function AdminPage(): Promise<React.ReactNode> {
   const authenticated = await isAdminAuthenticated();
   const hasPassword = isAdminPasswordConfigured();
   const pipeOpsSignInUrl = getPipeOpsSignInUrl("/admin");

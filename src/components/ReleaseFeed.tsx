@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -23,13 +24,25 @@ interface MonthBucket {
 function getMonthBucket(value: string): MonthBucket {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return { key: "unknown", label: "Unknown Month", shortLabel: "Unknown", sortDate: Number.NEGATIVE_INFINITY };
+    return {
+      key: "unknown",
+      label: "Unknown Month",
+      shortLabel: "Unknown",
+      sortDate: Number.NEGATIVE_INFINITY,
+    };
   }
   const year = date.getUTCFullYear();
   const month = date.getUTCMonth() + 1;
   const key = `${year}-${String(month).padStart(2, "0")}`;
-  const label = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
-  const shortLabel = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(date);
+  const label = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+  const shortLabel = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  }).format(date);
   return { key, label, shortLabel, sortDate: Date.UTC(year, month - 1, 1) };
 }
 
@@ -40,7 +53,10 @@ function toShortDate(value: string): string {
 }
 
 function toReleaseAnchor(value: string): string {
-  const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return `release-${slug || "item"}`;
 }
 
@@ -51,13 +67,20 @@ function providerLabel(provider: AggregatedRelease["provider"]): string {
   return "GitHub";
 }
 
-export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: ReleaseFeedProps): JSX.Element {
+export function ReleaseFeed({
+  releases,
+  errors,
+  fetchedAt,
+  sourceNames,
+}: ReleaseFeedProps): React.ReactNode {
   const services = useMemo(() => {
     if (sourceNames && sourceNames.length > 0) {
       const active = new Set(releases.map((r) => r.sourceName));
-      return sourceNames.filter(name => active.has(name));
+      return sourceNames.filter((name) => active.has(name));
     }
-    return Array.from(new Set(releases.map((r) => r.sourceName))).sort((a, b) => a.localeCompare(b));
+    return Array.from(new Set(releases.map((r) => r.sourceName))).sort((a, b) =>
+      a.localeCompare(b),
+    );
   }, [releases, sourceNames]);
 
   const router = useRouter();
@@ -68,7 +91,9 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
 
   // Keep local state in sync or just map directly to the URL.
   // Mapping directly to the URL is cleaner.
-  const selectedService = services.includes(serviceFromUrl) ? serviceFromUrl : "all";
+  const selectedService = services.includes(serviceFromUrl)
+    ? serviceFromUrl
+    : "all";
 
   const setServiceFilter = (serviceName: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -81,24 +106,34 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
   };
 
   const [query, setQuery] = useState<string>("");
-  const [selectedRelease, setSelectedRelease] = useState<AggregatedRelease | null>(null);
-  const [activeReleaseId, setActiveReleaseId] = useState<string | null>(null);
+  const [_selectedRelease, setSelectedRelease] =
+    useState<AggregatedRelease | null>(null);
+  const [_activeReleaseId, setActiveReleaseId] = useState<string | null>(null);
   const [dismissedErrors, setDismissedErrors] = useState(false);
 
   const filtered = useMemo(() => {
     const lq = query.trim().toLowerCase();
     return releases.filter((r) => {
-      if (selectedService !== "all" && r.sourceName !== selectedService) return false;
+      if (selectedService !== "all" && r.sourceName !== selectedService)
+        return false;
       if (!lq) return true;
-      return `${r.sourceName} ${r.name} ${r.tagName} ${r.bodyExcerpt}`.toLowerCase().includes(lq);
+      return `${r.sourceName} ${r.name} ${r.tagName} ${r.bodyExcerpt}`
+        .toLowerCase()
+        .includes(lq);
     });
   }, [releases, query, selectedService]);
 
   const groupedByMonth = useMemo(() => {
-    const buckets = new Map<string, MonthBucket & { releases: AggregatedRelease[] }>();
+    const buckets = new Map<
+      string,
+      MonthBucket & { releases: AggregatedRelease[] }
+    >();
     for (const r of filtered) {
-      const { key, label, shortLabel, sortDate } = getMonthBucket(r.publishedAt);
-      if (!buckets.has(key)) buckets.set(key, { key, label, shortLabel, sortDate, releases: [] });
+      const { key, label, shortLabel, sortDate } = getMonthBucket(
+        r.publishedAt,
+      );
+      if (!buckets.has(key))
+        buckets.set(key, { key, label, shortLabel, sortDate, releases: [] });
       buckets.get(key)?.releases.push(r);
     }
     return Array.from(buckets.values())
@@ -107,9 +142,26 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
         key: g.key,
         label: g.label,
         shortLabel: g.shortLabel,
-        releases: [...g.releases].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()),
+        releases: [...g.releases].sort(
+          (a, b) =>
+            new Date(b.publishedAt).getTime() -
+            new Date(a.publishedAt).getTime(),
+        ),
       }));
   }, [filtered]);
+
+  const filteredIds = useMemo(
+    () => new Set(filtered.map((r) => r.id)),
+    [filtered],
+  );
+  const activeReleaseId =
+    _activeReleaseId && filteredIds.has(_activeReleaseId)
+      ? _activeReleaseId
+      : null;
+  const selectedRelease =
+    _selectedRelease && filteredIds.has(_selectedRelease.id)
+      ? _selectedRelease
+      : null;
 
   useEffect(() => {
     function onEscape(e: KeyboardEvent): void {
@@ -118,12 +170,6 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
   }, []);
-
-  useEffect(() => {
-    const ids = new Set(filtered.map((r) => r.id));
-    if (activeReleaseId && !ids.has(activeReleaseId)) setActiveReleaseId(null);
-    if (selectedRelease && !ids.has(selectedRelease.id)) setSelectedRelease(null);
-  }, [activeReleaseId, filtered, selectedRelease]);
 
   return (
     <section className="release-feed" aria-label="Unified changelog feed">
@@ -151,7 +197,7 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
                 fontSize: "0.75rem",
                 color: "var(--text-secondary)",
                 pointerEvents: "none",
-                fontFamily: "var(--font-mono)"
+                fontFamily: "var(--font-mono)",
               }}
             >
               ⌘K
@@ -181,7 +227,12 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
       </div>
 
       {!dismissedErrors && errors.length > 0 ? (
-        <div className="error-panel" role="status" aria-live="polite" style={{ position: "relative" }}>
+        <div
+          className="error-panel"
+          role="status"
+          aria-live="polite"
+          style={{ position: "relative" }}
+        >
           <button
             type="button"
             className="mini-btn icon-btn"
@@ -189,7 +240,13 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
             onClick={() => setDismissedErrors(true)}
             style={{ position: "absolute", top: "0.5rem", right: "0.5rem" }}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true" width={16} height={16} style={{ stroke: "currentColor", strokeWidth: 2, fill: "none" }}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              width={16}
+              height={16}
+              style={{ stroke: "currentColor", strokeWidth: 2, fill: "none" }}
+            >
               <path d="M6 6L18 18M18 6L6 18" />
             </svg>
           </button>
@@ -198,7 +255,8 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
             <ul>
               {errors.map((err) => (
                 <li key={`${err.sourceId}:${err.message}`}>
-                  <strong>{err.sourceName}</strong> ({err.repository}): {err.message}
+                  <strong>{err.sourceName}</strong> ({err.repository}):{" "}
+                  {err.message}
                 </li>
               ))}
             </ul>
@@ -208,7 +266,8 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
 
       <div className="meta-line">
         <span>
-          {filtered.length} release{filtered.length !== 1 ? "s" : ""} in {groupedByMonth.length} month
+          {filtered.length} release{filtered.length !== 1 ? "s" : ""} in{" "}
+          {groupedByMonth.length} month
           {groupedByMonth.length === 1 ? "" : "s"}
         </span>
         <span>Last fetched: {toShortDate(fetchedAt)}</span>
@@ -220,7 +279,10 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
         <div className="timeline-layout">
           <aside className="timeline-sidebar" aria-label="Timeline navigation">
             {groupedByMonth.map((mg) => (
-              <section key={`sidebar-${mg.key}`} className="timeline-sidebar-group">
+              <section
+                key={`sidebar-${mg.key}`}
+                className="timeline-sidebar-group"
+              >
                 <a href={`#month-${mg.key}`} className="timeline-sidebar-month">
                   <span>{mg.shortLabel}</span>
                   <span
@@ -256,7 +318,11 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
 
           <div className="release-timeline">
             {groupedByMonth.map((mg) => (
-              <section key={mg.key} id={`month-${mg.key}`} className="month-group">
+              <section
+                key={mg.key}
+                id={`month-${mg.key}`}
+                className="month-group"
+              >
                 <header className="month-group-header">
                   <h3>{mg.label}</h3>
                   <span>{mg.releases.length} updates</span>
@@ -269,11 +335,18 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
                       <article
                         key={r.id}
                         id={anchor}
-                        className={clsx("timeline-item", activeReleaseId === r.id && "selected")}
-                        style={{ animationDelay: `${Math.min(idx * 40, 300)}ms` }}
+                        className={clsx(
+                          "timeline-item",
+                          activeReleaseId === r.id && "selected",
+                        )}
+                        style={{
+                          animationDelay: `${Math.min(idx * 40, 300)}ms`,
+                        }}
                       >
                         <aside className="timeline-stamp">
-                          <time dateTime={r.publishedAt}>{toShortDate(r.publishedAt)}</time>
+                          <time dateTime={r.publishedAt}>
+                            {toShortDate(r.publishedAt)}
+                          </time>
                           <span>{r.sourceName}</span>
                         </aside>
 
@@ -300,8 +373,12 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
                             }}
                           >
                             <header className="card-header">
-                              <span className="service-chip">{r.sourceName}</span>
-                              <time dateTime={r.publishedAt}>{toShortDate(r.publishedAt)}</time>
+                              <span className="service-chip">
+                                {r.sourceName}
+                              </span>
+                              <time dateTime={r.publishedAt}>
+                                {toShortDate(r.publishedAt)}
+                              </time>
                             </header>
 
                             <h3>{r.name}</h3>
@@ -314,16 +391,25 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
                             {r.bodyExcerpt ? (
                               <p className="release-excerpt">{r.bodyExcerpt}</p>
                             ) : (
-                              <p className="release-excerpt" style={{ fontStyle: "italic", opacity: 0.7 }}>
+                              <p
+                                className="release-excerpt"
+                                style={{ fontStyle: "italic", opacity: 0.7 }}
+                              >
                                 No release notes were provided for this version.
                               </p>
                             )}
 
                             <footer className="card-footer">
                               <div className="flags">
-                                {r.kind === "commit" ? <span className="flag">From commit</span> : null}
-                                {r.prerelease ? <span className="flag">Pre-release</span> : null}
-                                {r.draft ? <span className="flag">Draft</span> : null}
+                                {r.kind === "commit" ? (
+                                  <span className="flag">From commit</span>
+                                ) : null}
+                                {r.prerelease ? (
+                                  <span className="flag">Pre-release</span>
+                                ) : null}
+                                {r.draft ? (
+                                  <span className="flag">Draft</span>
+                                ) : null}
                               </div>
 
                               <div className="card-actions">
@@ -362,7 +448,10 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
       )}
 
       {selectedRelease ? (
-        <div className="release-modal-backdrop" onClick={() => setSelectedRelease(null)}>
+        <div
+          className="release-modal-backdrop"
+          onClick={() => setSelectedRelease(null)}
+        >
           <article
             className="release-modal"
             role="dialog"
@@ -372,11 +461,15 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
           >
             <header className="release-modal-header">
               <div>
-                <p className="eyebrow modal-eyebrow">{selectedRelease.sourceName}</p>
+                <p className="eyebrow modal-eyebrow">
+                  {selectedRelease.sourceName}
+                </p>
                 <h3 id="release-modal-title">{selectedRelease.name}</h3>
                 <p className="release-modal-meta">
-                  {selectedRelease.repository} · {selectedRelease.kind === "commit" ? "commit" : "release"} ·{" "}
-                  {selectedRelease.tagName} · {toShortDate(selectedRelease.publishedAt)}
+                  {selectedRelease.repository} ·{" "}
+                  {selectedRelease.kind === "commit" ? "commit" : "release"} ·{" "}
+                  {selectedRelease.tagName} ·{" "}
+                  {toShortDate(selectedRelease.publishedAt)}
                 </p>
               </div>
               <button
@@ -392,11 +485,17 @@ export function ReleaseFeed({ releases, errors, fetchedAt, sourceNames }: Releas
             </header>
 
             <div className="release-modal-body">
-              <pre>{selectedRelease.body || "No detailed release notes provided."}</pre>
+              <pre>
+                {selectedRelease.body || "No detailed release notes provided."}
+              </pre>
             </div>
 
             <footer className="release-modal-footer">
-              <a href={selectedRelease.htmlUrl} target="_blank" rel="noreferrer">
+              <a
+                href={selectedRelease.htmlUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 View original on {providerLabel(selectedRelease.provider)} →
               </a>
             </footer>

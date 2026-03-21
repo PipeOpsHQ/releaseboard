@@ -1,3 +1,4 @@
+import type React from "react";
 import Link from "next/link";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 
@@ -28,21 +29,39 @@ const PROVIDERS = [
   { name: "Gitea", icon: "◎" },
 ];
 
-export async function LandingPage(): Promise<JSX.Element> {
+export async function LandingPage(): Promise<React.ReactNode> {
   const isAdmin = await isAdminAuthenticated();
 
   return (
     <main className="page-shell landing-shell">
-      <section className="landing-topbar" style={{ animation: "fadeIn 500ms ease both" }}>
+      <section
+        className="landing-topbar"
+        style={{ animation: "fadeIn 500ms ease both" }}
+      >
         <p className="landing-brand">⬢ Releaseboard</p>
         <div className="hero-actions">
-          <a href="https://github.com/PipeOpsHQ/releaseboard" target="_blank" rel="noreferrer" className="ghost-btn" style={{ marginRight: "0.5rem" }}>
+          <a
+            href="https://github.com/PipeOpsHQ/releaseboard"
+            target="_blank"
+            rel="noreferrer"
+            className="ghost-btn"
+            style={{ marginRight: "0.5rem" }}
+          >
             GitHub
           </a>
-          <Link href="/docs" className="ghost-btn" style={{ marginRight: "0.5rem" }}>
+          <Link
+            href="/docs"
+            className="ghost-btn"
+            style={{ marginRight: "0.5rem" }}
+          >
             Docs
           </Link>
-          <a href="https://www.pipeops.io/addons/c7b3fa6c-a9a3-4974-95d2-2ba39a1777b1/details" target="_blank" rel="noreferrer" className="ghost-btn">
+          <a
+            href="https://www.pipeops.io/addons/c7b3fa6c-a9a3-4974-95d2-2ba39a1777b1/details"
+            target="_blank"
+            rel="noreferrer"
+            className="ghost-btn"
+          >
             Deploy on PipeOps
           </a>
           <Link href="/changelog" className="primary-btn">
@@ -51,7 +70,13 @@ export async function LandingPage(): Promise<JSX.Element> {
         </div>
       </section>
 
-      <section className="landing-hero-panel" style={{ animation: "fadeSlideUp 600ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "100ms" }}>
+      <section
+        className="landing-hero-panel"
+        style={{
+          animation: "fadeSlideUp 600ms cubic-bezier(0.16, 1, 0.3, 1) both",
+          animationDelay: "100ms",
+        }}
+      >
         <div className="landing-hero">
           <p className="eyebrow">Unified Product Updates</p>
           <h1 className="gradient-text">
@@ -65,8 +90,21 @@ export async function LandingPage(): Promise<JSX.Element> {
 
           <div className="hero-actions" style={{ marginTop: "0.2rem" }}>
             {PROVIDERS.map((p, i) => (
-              <span key={p.name} className="pill" style={{ cursor: "default", fontSize: "0.8rem", animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: `${200 + i * 50}ms` }}>
-                <span style={{ opacity: 0.6, marginRight: "4px" }}>{p.icon}</span> {p.name}
+              <span
+                key={p.name}
+                className="pill"
+                style={{
+                  cursor: "default",
+                  fontSize: "0.8rem",
+                  animation:
+                    "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+                  animationDelay: `${200 + i * 50}ms`,
+                }}
+              >
+                <span style={{ opacity: 0.6, marginRight: "4px" }}>
+                  {p.icon}
+                </span>{" "}
+                {p.name}
               </span>
             ))}
           </div>
@@ -96,13 +134,16 @@ export async function LandingPage(): Promise<JSX.Element> {
           </div>
           <div className="console-body">
             <p className="console-typing typing-line-1">
-              <span className="accent">[sync]</span> Attached <strong>pipeopshq/agent</strong> (private)
+              <span className="accent">[sync]</span> Attached{" "}
+              <strong>pipeopshq/agent</strong> (private)
             </p>
             <p className="console-typing typing-line-2">
-              <span className="accent">[fetch]</span> 8 releases, 24 commits ingested
+              <span className="accent">[fetch]</span> 8 releases, 24 commits
+              ingested
             </p>
             <p className="console-typing typing-line-3">
-              <span className="accent">[render]</span> Unified feed built at <strong>/changelog</strong>
+              <span className="accent">[render]</span> Unified feed built at{" "}
+              <strong>/changelog</strong>
             </p>
             <div className="console-tags">
               <span>Release notes</span>
@@ -116,9 +157,24 @@ export async function LandingPage(): Promise<JSX.Element> {
 
       <section className="landing-grid">
         {FEATURES.map((f, i) => (
-          <article className="landing-card" key={f.title} style={{ animation: "fadeSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: `${300 + i * 100}ms` }}>
+          <article
+            className="landing-card"
+            key={f.title}
+            style={{
+              animation: "fadeSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both",
+              animationDelay: `${300 + i * 100}ms`,
+            }}
+          >
             <h3>
-              <span style={{ marginRight: "0.6rem", fontSize: "1.2rem", opacity: 0.8 }}>{f.icon}</span>
+              <span
+                style={{
+                  marginRight: "0.6rem",
+                  fontSize: "1.2rem",
+                  opacity: 0.8,
+                }}
+              >
+                {f.icon}
+              </span>
               {f.title}
             </h3>
             <p>{f.desc}</p>
@@ -138,7 +194,7 @@ export async function LandingPage(): Promise<JSX.Element> {
           color: "var(--text-muted)",
           fontSize: "0.85rem",
           animation: "fadeIn 500ms ease both",
-          animationDelay: "600ms"
+          animationDelay: "600ms",
         }}
       >
         <span>© {new Date().getFullYear()} Releaseboard</span>

@@ -1,6 +1,11 @@
+import type React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
-import { DEFAULT_CHANGELOG_PATH_NAME, listChangelogPages, listEnabledRepoSourcesWithTokens } from "@/lib/db";
+import {
+  DEFAULT_CHANGELOG_PATH_NAME,
+  listChangelogPages,
+  listEnabledRepoSourcesWithTokens,
+} from "@/lib/db";
 import { getUnifiedChangelog } from "@/lib/changelog";
 import { ReleaseFeed } from "@/components/ReleaseFeed";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
@@ -11,7 +16,9 @@ interface ChangelogViewProps {
   pageName?: string;
 }
 
-export async function ChangelogView(props?: ChangelogViewProps): Promise<JSX.Element> {
+export async function ChangelogView(
+  props?: ChangelogViewProps,
+): Promise<React.ReactNode> {
   const pageId = props?.pageId;
   const pagePathName = props?.pagePathName ?? DEFAULT_CHANGELOG_PATH_NAME;
   const pageName = props?.pageName ?? "Changelog";
@@ -33,8 +40,20 @@ export async function ChangelogView(props?: ChangelogViewProps): Promise<JSX.Ele
           ⬢ Releaseboard
         </Link>
 
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginLeft: "auto" }}>
-          <a href="https://github.com/PipeOpsHQ/releaseboard" target="_blank" rel="noreferrer" className="ghost-btn">
+        <div
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+            marginLeft: "auto",
+          }}
+        >
+          <a
+            href="https://github.com/PipeOpsHQ/releaseboard"
+            target="_blank"
+            rel="noreferrer"
+            className="ghost-btn"
+          >
             GitHub
           </a>
           <Link href="/docs" className="ghost-btn">
@@ -48,7 +67,12 @@ export async function ChangelogView(props?: ChangelogViewProps): Promise<JSX.Ele
               Admin
             </Link>
           )}
-          <a href={apiHref} className="ghost-btn" target="_blank" rel="noreferrer">
+          <a
+            href={apiHref}
+            className="ghost-btn"
+            target="_blank"
+            rel="noreferrer"
+          >
             JSON API
           </a>
         </div>
@@ -60,7 +84,11 @@ export async function ChangelogView(props?: ChangelogViewProps): Promise<JSX.Ele
             return (
               <Link
                 key={page.id}
-                href={page.pathName === DEFAULT_CHANGELOG_PATH_NAME ? "/changelog" : `/${page.pathName}`}
+                href={
+                  page.pathName === DEFAULT_CHANGELOG_PATH_NAME
+                    ? "/changelog"
+                    : `/${page.pathName}`
+                }
                 className={`pill ${page.pathName === pagePathName ? "active" : ""}`}
               >
                 {page.name}
@@ -71,11 +99,15 @@ export async function ChangelogView(props?: ChangelogViewProps): Promise<JSX.Ele
       ) : null}
 
       <div className="meta-line" style={{ marginBottom: "0.6rem" }}>
-        <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>{pageName}</span>
+        <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>
+          {pageName}
+        </span>
         <span>/{pagePathName}</span>
       </div>
 
-      <Suspense fallback={<div className="empty-state">Loading releases...</div>}>
+      <Suspense
+        fallback={<div className="empty-state">Loading releases...</div>}
+      >
         <ReleaseFeed
           releases={changelog.releases}
           errors={changelog.errors}
