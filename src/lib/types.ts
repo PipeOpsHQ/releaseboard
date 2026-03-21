@@ -7,6 +7,7 @@ export interface RepoSource {
   provider: GitProvider;
   owner: string;
   repo: string;
+  branch: string | null;
   baseUrl: string | null;
   isPrivate: boolean;
   hasToken: boolean;

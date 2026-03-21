@@ -9,7 +9,7 @@ import type {
   RepoSource,
   RepoSourceWithToken,
   RootPageMode,
-  UnifiedChangelog
+  UnifiedChangelog,
 } from "@/lib/types";
 import { decryptToken, encryptToken } from "@/lib/security";
 
@@ -20,6 +20,7 @@ interface SourceRow {
   provider: string;
   owner: string;
   repo: string;
+  branch: string | null;
   base_url: string | null;
   is_private: number;
   token_encrypted: string | null;
@@ -45,6 +46,7 @@ interface SourceCreateInput {
   provider: GitProvider;
   owner: string;
   repo: string;
+  branch: string | null;
   baseUrl: string | null;
   isPrivate: boolean;
   token: string | null;
@@ -59,6 +61,7 @@ interface SourceUpdateInput {
   provider: GitProvider;
   owner: string;
   repo: string;
+  branch: string | null;
   baseUrl: string | null;
   isPrivate: boolean;
   token?: string | null;
@@ -109,7 +112,12 @@ mkdirSync(path.dirname(dbPath), { recursive: true });
 const db = new Database(dbPath);
 db.pragma("busy_timeout = 5000");
 
-const SUPPORTED_PROVIDERS: GitProvider[] = ["github", "gitlab", "bitbucket", "gitea"];
+const SUPPORTED_PROVIDERS: GitProvider[] = [
+  "github",
+  "gitlab",
+  "bitbucket",
+  "gitea",
+];
 
 function normalizeProvider(value: string | null | undefined): GitProvider {
   if (!value) {
@@ -230,23 +238,38 @@ db.prepare(
     INSERT INTO changelog_pages (id, name, path_name, custom_domain, created_at, updated_at)
     VALUES (@id, @name, @path_name, NULL, @created_at, @updated_at)
     ON CONFLICT(id) DO NOTHING
-  `
+  `,
 ).run({
   id: DEFAULT_CHANGELOG_PAGE_ID,
   name: "Main Changelog",
   path_name: DEFAULT_CHANGELOG_PATH_NAME,
   created_at: now,
-  updated_at: now
+  updated_at: now,
 });
 
-const repoSourceColumns = db.prepare("PRAGMA table_info(repo_sources)").all() as Array<{ name: string }>;
-const hasProviderColumn = repoSourceColumns.some((column) => column.name === "provider");
-const hasBaseUrlColumn = repoSourceColumns.some((column) => column.name === "base_url");
-const hasPageIdColumn = repoSourceColumns.some((column) => column.name === "page_id");
-const hasSortOrderColumn = repoSourceColumns.some((column) => column.name === "sort_order");
+const repoSourceColumns = db
+  .prepare("PRAGMA table_info(repo_sources)")
+  .all() as Array<{ name: string }>;
+const hasProviderColumn = repoSourceColumns.some(
+  (column) => column.name === "provider",
+);
+const hasBaseUrlColumn = repoSourceColumns.some(
+  (column) => column.name === "base_url",
+);
+const hasPageIdColumn = repoSourceColumns.some(
+  (column) => column.name === "page_id",
+);
+const hasSortOrderColumn = repoSourceColumns.some(
+  (column) => column.name === "sort_order",
+);
+const hasBranchColumn = repoSourceColumns.some(
+  (column) => column.name === "branch",
+);
 
 if (!hasProviderColumn) {
-  db.exec("ALTER TABLE repo_sources ADD COLUMN provider TEXT NOT NULL DEFAULT 'github'");
+  db.exec(
+    "ALTER TABLE repo_sources ADD COLUMN provider TEXT NOT NULL DEFAULT 'github'",
+  );
 }
 
 if (!hasBaseUrlColumn) {
@@ -254,24 +277,36 @@ if (!hasBaseUrlColumn) {
 }
 
 if (!hasPageIdColumn) {
-  db.exec(`ALTER TABLE repo_sources ADD COLUMN page_id TEXT NOT NULL DEFAULT '${DEFAULT_CHANGELOG_PAGE_ID}'`);
+  db.exec(
+    `ALTER TABLE repo_sources ADD COLUMN page_id TEXT NOT NULL DEFAULT '${DEFAULT_CHANGELOG_PAGE_ID}'`,
+  );
+}
+
+if (!hasBranchColumn) {
+  db.exec("ALTER TABLE repo_sources ADD COLUMN branch TEXT");
 }
 
 if (!hasSortOrderColumn) {
-  db.exec("ALTER TABLE repo_sources ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+  db.exec(
+    "ALTER TABLE repo_sources ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0",
+  );
   // Optional: seed initial sort_order values so they aren't all 0,
   // but it works fine if they are all 0 initially (they will sort by display name)
 }
 
-db.exec("CREATE INDEX IF NOT EXISTS idx_repo_sources_page_id ON repo_sources(page_id)");
-db.exec("CREATE INDEX IF NOT EXISTS idx_repo_sources_sort_order ON repo_sources(page_id, sort_order);");
+db.exec(
+  "CREATE INDEX IF NOT EXISTS idx_repo_sources_page_id ON repo_sources(page_id)",
+);
+db.exec(
+  "CREATE INDEX IF NOT EXISTS idx_repo_sources_sort_order ON repo_sources(page_id, sort_order);",
+);
 
 db.prepare(
   `
     UPDATE repo_sources
     SET page_id = @default_page_id
     WHERE page_id IS NULL OR TRIM(page_id) = ''
-  `
+  `,
 ).run({ default_page_id: DEFAULT_CHANGELOG_PAGE_ID });
 
 db.prepare(
@@ -279,27 +314,31 @@ db.prepare(
     INSERT INTO app_settings (id, root_page, updated_at)
     VALUES (1, 'landing', @updated_at)
     ON CONFLICT(id) DO NOTHING
-  `
+  `,
 ).run({ updated_at: now });
 
 // Migrate legacy single-row snapshot to page-scoped snapshots if needed.
 const hasDefaultSnapshot = Boolean(
-  db.prepare("SELECT 1 FROM changelog_snapshots WHERE page_id = ?").get(DEFAULT_CHANGELOG_PAGE_ID)
+  db
+    .prepare("SELECT 1 FROM changelog_snapshots WHERE page_id = ?")
+    .get(DEFAULT_CHANGELOG_PAGE_ID),
 );
 if (!hasDefaultSnapshot) {
-  const legacy = db.prepare("SELECT * FROM changelog_snapshot WHERE id = 1").get() as LegacyChangelogSnapshotRow | undefined;
+  const legacy = db
+    .prepare("SELECT * FROM changelog_snapshot WHERE id = 1")
+    .get() as LegacyChangelogSnapshotRow | undefined;
   if (legacy) {
     db.prepare(
       `
         INSERT INTO changelog_snapshots (page_id, fetched_at, payload_json, updated_at)
         VALUES (@page_id, @fetched_at, @payload_json, @updated_at)
         ON CONFLICT(page_id) DO NOTHING
-      `
+      `,
     ).run({
       page_id: DEFAULT_CHANGELOG_PAGE_ID,
       fetched_at: legacy.fetched_at,
       payload_json: legacy.payload_json,
-      updated_at: legacy.updated_at
+      updated_at: legacy.updated_at,
     });
   }
 }
@@ -311,7 +350,7 @@ function mapPageRow(row: PageRow): ChangelogPage {
     pathName: row.path_name,
     customDomain: normalizeDomain(row.custom_domain),
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   };
 }
 
@@ -323,6 +362,7 @@ function mapRow(row: SourceRow): RepoSource {
     provider: normalizeProvider(row.provider),
     owner: row.owner,
     repo: row.repo,
+    branch: row.branch || null,
     baseUrl: normalizeBaseUrl(row.base_url),
     isPrivate: row.is_private === 1,
     hasToken: Boolean(decryptToken(row.token_encrypted)),
@@ -330,19 +370,21 @@ function mapRow(row: SourceRow): RepoSource {
     releasesLimit: row.releases_limit,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   };
 }
 
 function mapRowWithToken(row: SourceRow): RepoSourceWithToken {
   return {
     ...mapRow(row),
-    token: decryptToken(row.token_encrypted)
+    token: decryptToken(row.token_encrypted),
   };
 }
 
 function getPageOrThrow(id: string): PageRow {
-  const row = db.prepare("SELECT * FROM changelog_pages WHERE id = ?").get(id) as PageRow | undefined;
+  const row = db
+    .prepare("SELECT * FROM changelog_pages WHERE id = ?")
+    .get(id) as PageRow | undefined;
   if (!row) {
     throw new Error("Changelog page not found");
   }
@@ -350,12 +392,16 @@ function getPageOrThrow(id: string): PageRow {
 }
 
 export function listChangelogPages(): ChangelogPage[] {
-  const rows = db.prepare("SELECT * FROM changelog_pages ORDER BY created_at ASC").all() as PageRow[];
+  const rows = db
+    .prepare("SELECT * FROM changelog_pages ORDER BY created_at ASC")
+    .all() as PageRow[];
   return rows.map(mapPageRow);
 }
 
 export function getDefaultChangelogPage(): ChangelogPage {
-  const row = db.prepare("SELECT * FROM changelog_pages WHERE id = ?").get(DEFAULT_CHANGELOG_PAGE_ID) as PageRow | undefined;
+  const row = db
+    .prepare("SELECT * FROM changelog_pages WHERE id = ?")
+    .get(DEFAULT_CHANGELOG_PAGE_ID) as PageRow | undefined;
   if (!row) {
     throw new Error("Default changelog page missing");
   }
@@ -363,14 +409,18 @@ export function getDefaultChangelogPage(): ChangelogPage {
 }
 
 export function getChangelogPageById(id: string): ChangelogPage | null {
-  const row = db.prepare("SELECT * FROM changelog_pages WHERE id = ?").get(id) as PageRow | undefined;
+  const row = db
+    .prepare("SELECT * FROM changelog_pages WHERE id = ?")
+    .get(id) as PageRow | undefined;
   return row ? mapPageRow(row) : null;
 }
 
 export function getChangelogPageByPath(pathName: string): ChangelogPage | null {
   try {
     const normalizedPath = normalizePathName(pathName);
-    const row = db.prepare("SELECT * FROM changelog_pages WHERE path_name = ?").get(normalizedPath) as PageRow | undefined;
+    const row = db
+      .prepare("SELECT * FROM changelog_pages WHERE path_name = ?")
+      .get(normalizedPath) as PageRow | undefined;
     return row ? mapPageRow(row) : null;
   } catch {
     return null;
@@ -383,7 +433,9 @@ export function getChangelogPageByDomain(domain: string): ChangelogPage | null {
     return null;
   }
 
-  const row = db.prepare("SELECT * FROM changelog_pages WHERE custom_domain = ?").get(normalizedDomain) as PageRow | undefined;
+  const row = db
+    .prepare("SELECT * FROM changelog_pages WHERE custom_domain = ?")
+    .get(normalizedDomain) as PageRow | undefined;
   return row ? mapPageRow(row) : null;
 }
 
@@ -397,14 +449,14 @@ export function createChangelogPage(input: PageCreateInput): ChangelogPage {
     `
       INSERT INTO changelog_pages (id, name, path_name, custom_domain, created_at, updated_at)
       VALUES (@id, @name, @path_name, @custom_domain, @created_at, @updated_at)
-    `
+    `,
   ).run({
     id,
     name: input.name.trim(),
     path_name: pathName,
     custom_domain: customDomain,
     created_at: nowIso,
-    updated_at: nowIso
+    updated_at: nowIso,
   });
 
   return mapPageRow(getPageOrThrow(id));
@@ -416,7 +468,10 @@ export function updateChangelogPage(input: PageUpdateInput): ChangelogPage {
   const pathName = normalizePathName(input.pathName);
   const customDomain = normalizeDomain(input.customDomain);
 
-  if (current.id === DEFAULT_CHANGELOG_PAGE_ID && pathName !== DEFAULT_CHANGELOG_PATH_NAME) {
+  if (
+    current.id === DEFAULT_CHANGELOG_PAGE_ID &&
+    pathName !== DEFAULT_CHANGELOG_PATH_NAME
+  ) {
     throw new Error("Default changelog path cannot be changed");
   }
 
@@ -425,13 +480,13 @@ export function updateChangelogPage(input: PageUpdateInput): ChangelogPage {
       UPDATE changelog_pages
       SET name = @name, path_name = @path_name, custom_domain = @custom_domain, updated_at = @updated_at
       WHERE id = @id
-    `
+    `,
   ).run({
     id: input.id,
     name: input.name.trim(),
     path_name: pathName,
     custom_domain: customDomain,
-    updated_at: nowIso
+    updated_at: nowIso,
   });
 
   return mapPageRow(getPageOrThrow(input.id));
@@ -458,15 +513,27 @@ export function listRepoSources(pageId?: string): RepoSource[] {
   const normalizedPageId = pageId?.trim();
 
   const rows = normalizedPageId
-    ? (db.prepare("SELECT * FROM repo_sources WHERE page_id = ? ORDER BY sort_order ASC, display_name ASC").all(normalizedPageId) as SourceRow[])
-    : (db.prepare("SELECT * FROM repo_sources ORDER BY page_id ASC, sort_order ASC, display_name ASC").all() as SourceRow[]);
+    ? (db
+        .prepare(
+          "SELECT * FROM repo_sources WHERE page_id = ? ORDER BY sort_order ASC, display_name ASC",
+        )
+        .all(normalizedPageId) as SourceRow[])
+    : (db
+        .prepare(
+          "SELECT * FROM repo_sources ORDER BY page_id ASC, sort_order ASC, display_name ASC",
+        )
+        .all() as SourceRow[]);
 
   return rows.map(mapRow);
 }
 
-export function listEnabledRepoSourcesWithTokens(pageId = DEFAULT_CHANGELOG_PAGE_ID): RepoSourceWithToken[] {
+export function listEnabledRepoSourcesWithTokens(
+  pageId = DEFAULT_CHANGELOG_PAGE_ID,
+): RepoSourceWithToken[] {
   const rows = db
-    .prepare("SELECT * FROM repo_sources WHERE enabled = 1 AND page_id = ? ORDER BY sort_order ASC, display_name ASC")
+    .prepare(
+      "SELECT * FROM repo_sources WHERE enabled = 1 AND page_id = ? ORDER BY sort_order ASC, display_name ASC",
+    )
     .all(pageId) as SourceRow[];
 
   return rows.map(mapRowWithToken);
@@ -487,6 +554,7 @@ export function createRepoSource(input: SourceCreateInput): RepoSource {
         provider,
         owner,
         repo,
+        branch,
         base_url,
         is_private,
         token_encrypted,
@@ -502,6 +570,7 @@ export function createRepoSource(input: SourceCreateInput): RepoSource {
         @provider,
         @owner,
         @repo,
+        @branch,
         @base_url,
         @is_private,
         @token_encrypted,
@@ -511,7 +580,7 @@ export function createRepoSource(input: SourceCreateInput): RepoSource {
         @created_at,
         @updated_at
       )
-    `
+    `,
   ).run({
     id,
     page_id: input.pageId,
@@ -519,30 +588,38 @@ export function createRepoSource(input: SourceCreateInput): RepoSource {
     provider: input.provider,
     owner: input.owner,
     repo: input.repo,
+    branch: input.branch || null,
     base_url: normalizeBaseUrl(input.baseUrl),
     is_private: input.isPrivate ? 1 : 0,
     token_encrypted: encryptToken(input.token),
     enabled: input.enabled ? 1 : 0,
     releases_limit: input.releasesLimit,
     created_at: nowIso,
-    updated_at: nowIso
+    updated_at: nowIso,
   });
 
-  const row = db.prepare("SELECT * FROM repo_sources WHERE id = ?").get(id) as SourceRow;
+  const row = db
+    .prepare("SELECT * FROM repo_sources WHERE id = ?")
+    .get(id) as SourceRow;
   return mapRow(row);
 }
 
 export function updateRepoSource(input: SourceUpdateInput): RepoSource {
   const nowIso = new Date().toISOString();
 
-  const current = db.prepare("SELECT * FROM repo_sources WHERE id = ?").get(input.id) as SourceRow | undefined;
+  const current = db
+    .prepare("SELECT * FROM repo_sources WHERE id = ?")
+    .get(input.id) as SourceRow | undefined;
   if (!current) {
     throw new Error("Source not found");
   }
 
   getPageOrThrow(input.pageId);
 
-  const nextToken = input.token === undefined ? current.token_encrypted : encryptToken(input.token);
+  const nextToken =
+    input.token === undefined
+      ? current.token_encrypted
+      : encryptToken(input.token);
 
   db.prepare(
     `
@@ -553,6 +630,7 @@ export function updateRepoSource(input: SourceUpdateInput): RepoSource {
         provider = @provider,
         owner = @owner,
         repo = @repo,
+        branch = @branch,
         base_url = @base_url,
         is_private = @is_private,
         token_encrypted = @token_encrypted,
@@ -560,7 +638,7 @@ export function updateRepoSource(input: SourceUpdateInput): RepoSource {
         releases_limit = @releases_limit,
         updated_at = @updated_at
       WHERE id = @id
-    `
+    `,
   ).run({
     id: input.id,
     page_id: input.pageId,
@@ -568,15 +646,18 @@ export function updateRepoSource(input: SourceUpdateInput): RepoSource {
     provider: input.provider,
     owner: input.owner,
     repo: input.repo,
+    branch: input.branch || null,
     base_url: normalizeBaseUrl(input.baseUrl),
     is_private: input.isPrivate ? 1 : 0,
     token_encrypted: nextToken,
     enabled: input.enabled ? 1 : 0,
     releases_limit: input.releasesLimit,
-    updated_at: nowIso
+    updated_at: nowIso,
   });
 
-  const row = db.prepare("SELECT * FROM repo_sources WHERE id = ?").get(input.id) as SourceRow;
+  const row = db
+    .prepare("SELECT * FROM repo_sources WHERE id = ?")
+    .get(input.id) as SourceRow;
   return mapRow(row);
 }
 
@@ -584,14 +665,21 @@ export function deleteRepoSource(id: string): void {
   db.prepare("DELETE FROM repo_sources WHERE id = ?").run(id);
 }
 
-export function swapRepoSourceOrder(sourceId: string, direction: "up" | "down"): void {
+export function swapRepoSourceOrder(
+  sourceId: string,
+  direction: "up" | "down",
+): void {
   // Use a transaction to ensure atomic swap
   const swap = db.transaction(() => {
-    const current = db.prepare("SELECT id, page_id, sort_order FROM repo_sources WHERE id = ?").get(sourceId) as {
-      id: string;
-      page_id: string;
-      sort_order: number;
-    } | undefined;
+    const current = db
+      .prepare("SELECT id, page_id, sort_order FROM repo_sources WHERE id = ?")
+      .get(sourceId) as
+      | {
+          id: string;
+          page_id: string;
+          sort_order: number;
+        }
+      | undefined;
 
     if (!current) return; // Source not found
 
@@ -601,13 +689,21 @@ export function swapRepoSourceOrder(sourceId: string, direction: "up" | "down"):
     if (direction === "up") {
       // Find the row immediately preceding us in the same page
       adjacent = db
-        .prepare("SELECT id, sort_order FROM repo_sources WHERE page_id = ? AND sort_order < ? ORDER BY sort_order DESC LIMIT 1")
-        .get(current.page_id, current.sort_order) as { id: string; sort_order: number } | undefined;
+        .prepare(
+          "SELECT id, sort_order FROM repo_sources WHERE page_id = ? AND sort_order < ? ORDER BY sort_order DESC LIMIT 1",
+        )
+        .get(current.page_id, current.sort_order) as
+        | { id: string; sort_order: number }
+        | undefined;
     } else {
       // Find the row immediately following us in the same page
       adjacent = db
-        .prepare("SELECT id, sort_order FROM repo_sources WHERE page_id = ? AND sort_order > ? ORDER BY sort_order ASC LIMIT 1")
-        .get(current.page_id, current.sort_order) as { id: string; sort_order: number } | undefined;
+        .prepare(
+          "SELECT id, sort_order FROM repo_sources WHERE page_id = ? AND sort_order > ? ORDER BY sort_order ASC LIMIT 1",
+        )
+        .get(current.page_id, current.sort_order) as
+        | { id: string; sort_order: number }
+        | undefined;
     }
 
     if (!adjacent) return; // Already at the top/bottom
@@ -615,37 +711,37 @@ export function swapRepoSourceOrder(sourceId: string, direction: "up" | "down"):
     const nowIso = new Date().toISOString();
 
     // Perform the swap
-    db.prepare("UPDATE repo_sources SET sort_order = ?, updated_at = ? WHERE id = ?").run(
-      adjacent.sort_order,
-      nowIso,
-      current.id
-    );
+    db.prepare(
+      "UPDATE repo_sources SET sort_order = ?, updated_at = ? WHERE id = ?",
+    ).run(adjacent.sort_order, nowIso, current.id);
 
-    db.prepare("UPDATE repo_sources SET sort_order = ?, updated_at = ? WHERE id = ?").run(
-      current.sort_order,
-      nowIso,
-      adjacent.id
-    );
+    db.prepare(
+      "UPDATE repo_sources SET sort_order = ?, updated_at = ? WHERE id = ?",
+    ).run(current.sort_order, nowIso, adjacent.id);
   });
 
   swap();
 }
 
 export function getAppSettings(): AppSettings {
-  const row = db.prepare("SELECT * FROM app_settings WHERE id = 1").get() as AppSettingsRow | undefined;
+  const row = db.prepare("SELECT * FROM app_settings WHERE id = 1").get() as
+    | AppSettingsRow
+    | undefined;
 
   if (!row) {
     const updatedAt = new Date().toISOString();
-    db.prepare("INSERT INTO app_settings (id, root_page, updated_at) VALUES (1, 'landing', ?)").run(updatedAt);
+    db.prepare(
+      "INSERT INTO app_settings (id, root_page, updated_at) VALUES (1, 'landing', ?)",
+    ).run(updatedAt);
     return {
       rootPage: "landing",
-      updatedAt
+      updatedAt,
     };
   }
 
   return {
     rootPage: row.root_page,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   };
 }
 
@@ -657,41 +753,55 @@ export function setRootPageMode(rootPage: RootPageMode): AppSettings {
       UPDATE app_settings
       SET root_page = @root_page, updated_at = @updated_at
       WHERE id = 1
-    `
+    `,
   ).run({
     root_page: rootPage,
-    updated_at: updatedAt
+    updated_at: updatedAt,
   });
 
   return {
     rootPage,
-    updatedAt
+    updatedAt,
   };
 }
 
-export function getChangelogSnapshot(pageId = DEFAULT_CHANGELOG_PAGE_ID): UnifiedChangelog | null {
-  const row = db.prepare("SELECT * FROM changelog_snapshots WHERE page_id = ?").get(pageId) as ChangelogSnapshotRow | undefined;
+export function getChangelogSnapshot(
+  pageId = DEFAULT_CHANGELOG_PAGE_ID,
+): UnifiedChangelog | null {
+  const row = db
+    .prepare("SELECT * FROM changelog_snapshots WHERE page_id = ?")
+    .get(pageId) as ChangelogSnapshotRow | undefined;
   if (!row) {
     return null;
   }
 
   try {
     const parsed = JSON.parse(row.payload_json) as Partial<UnifiedChangelog>;
-    if (!parsed || !Array.isArray(parsed.releases) || !Array.isArray(parsed.errors)) {
+    if (
+      !parsed ||
+      !Array.isArray(parsed.releases) ||
+      !Array.isArray(parsed.errors)
+    ) {
       return null;
     }
 
     return {
-      fetchedAt: typeof parsed.fetchedAt === "string" ? parsed.fetchedAt : row.fetched_at,
+      fetchedAt:
+        typeof parsed.fetchedAt === "string"
+          ? parsed.fetchedAt
+          : row.fetched_at,
       releases: parsed.releases,
-      errors: parsed.errors
+      errors: parsed.errors,
     };
   } catch {
     return null;
   }
 }
 
-export function saveChangelogSnapshot(pageId: string, payload: UnifiedChangelog): void {
+export function saveChangelogSnapshot(
+  pageId: string,
+  payload: UnifiedChangelog,
+): void {
   const nowIso = new Date().toISOString();
 
   db.prepare(
@@ -702,11 +812,11 @@ export function saveChangelogSnapshot(pageId: string, payload: UnifiedChangelog)
         fetched_at = excluded.fetched_at,
         payload_json = excluded.payload_json,
         updated_at = excluded.updated_at
-    `
+    `,
   ).run({
     page_id: pageId,
     fetched_at: payload.fetchedAt,
     payload_json: JSON.stringify(payload),
-    updated_at: nowIso
+    updated_at: nowIso,
   });
 }

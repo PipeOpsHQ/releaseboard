@@ -11,7 +11,7 @@ import {
   setRootPageMode,
   swapRepoSourceOrder,
   updateChangelogPage,
-  updateRepoSource
+  updateRepoSource,
 } from "@/lib/db";
 import { invalidateChangelogCache } from "@/lib/changelog";
 import { loginAdmin, logoutAdmin, requireAdminOrThrow } from "@/lib/admin-auth";
@@ -22,16 +22,17 @@ const sourceSchema = z.object({
   provider: z.enum(["github", "gitlab", "bitbucket", "gitea"]),
   owner: z.string().min(1),
   repo: z.string().min(1),
+  branch: z.string().optional(),
   baseUrl: z.string().optional(),
   isPrivate: z.boolean(),
   enabled: z.boolean(),
-  releasesLimit: z.number().int().min(1).max(25)
+  releasesLimit: z.number().int().min(1).max(25),
 });
 
 const changelogPageSchema = z.object({
   name: z.string().min(2),
   pathName: z.string().min(1),
-  customDomain: z.string().optional()
+  customDomain: z.string().optional(),
 });
 
 const rootPageSchema = z.enum(["landing", "changelog"]);
@@ -73,10 +74,11 @@ export async function createSourceAction(formData: FormData): Promise<void> {
     provider: String(formData.get("provider") ?? "github").trim(),
     owner: String(formData.get("owner") ?? "").trim(),
     repo: String(formData.get("repo") ?? "").trim(),
+    branch: String(formData.get("branch") ?? "").trim(),
     baseUrl: String(formData.get("baseUrl") ?? "").trim(),
     isPrivate: parseBoolean(formData.get("isPrivate")),
     enabled: parseBoolean(formData.get("enabled")),
-    releasesLimit: parseReleasesLimit(formData.get("releasesLimit"))
+    releasesLimit: parseReleasesLimit(formData.get("releasesLimit")),
   });
 
   if (!parsed.success) {
@@ -88,7 +90,8 @@ export async function createSourceAction(formData: FormData): Promise<void> {
   createRepoSource({
     ...parsed.data,
     baseUrl: parsed.data.baseUrl?.trim() || null,
-    token: token || null
+    branch: parsed.data.branch?.trim() || null,
+    token: token || null,
   });
 
   invalidateChangelogCache();
@@ -116,10 +119,11 @@ export async function updateSourceAction(formData: FormData): Promise<void> {
     provider: String(formData.get("provider") ?? "github").trim(),
     owner: String(formData.get("owner") ?? "").trim(),
     repo: String(formData.get("repo") ?? "").trim(),
+    branch: String(formData.get("branch") ?? "").trim(),
     baseUrl: String(formData.get("baseUrl") ?? "").trim(),
     isPrivate: parseBoolean(formData.get("isPrivate")),
     enabled: parseBoolean(formData.get("enabled")),
-    releasesLimit: parseReleasesLimit(formData.get("releasesLimit"))
+    releasesLimit: parseReleasesLimit(formData.get("releasesLimit")),
   });
 
   if (!parsed.success) {
@@ -135,7 +139,8 @@ export async function updateSourceAction(formData: FormData): Promise<void> {
     id,
     ...parsed.data,
     baseUrl: parsed.data.baseUrl?.trim() || null,
-    token
+    branch: parsed.data.branch?.trim() || null,
+    token,
   });
 
   invalidateChangelogCache();
@@ -228,7 +233,9 @@ export async function refreshAction(): Promise<void> {
 export async function updateRootPageAction(formData: FormData): Promise<void> {
   await requireAdminOrThrow();
 
-  const parsed = rootPageSchema.safeParse(String(formData.get("rootPage") ?? "").trim());
+  const parsed = rootPageSchema.safeParse(
+    String(formData.get("rootPage") ?? "").trim(),
+  );
   if (!parsed.success) {
     throw new Error("Invalid root page mode");
   }
@@ -241,13 +248,15 @@ export async function updateRootPageAction(formData: FormData): Promise<void> {
   revalidatePath("/admin");
 }
 
-export async function createChangelogPageAction(formData: FormData): Promise<void> {
+export async function createChangelogPageAction(
+  formData: FormData,
+): Promise<void> {
   await requireAdminOrThrow();
 
   const parsed = changelogPageSchema.safeParse({
     name: String(formData.get("name") ?? "").trim(),
     pathName: String(formData.get("pathName") ?? "").trim(),
-    customDomain: String(formData.get("customDomain") ?? "").trim()
+    customDomain: String(formData.get("customDomain") ?? "").trim(),
   });
 
   if (!parsed.success) {
@@ -257,7 +266,7 @@ export async function createChangelogPageAction(formData: FormData): Promise<voi
   createChangelogPage({
     name: parsed.data.name,
     pathName: parsed.data.pathName,
-    customDomain: parsed.data.customDomain?.trim() || null
+    customDomain: parsed.data.customDomain?.trim() || null,
   });
 
   revalidatePath("/admin");
@@ -270,7 +279,9 @@ export async function createChangelogPageAction(formData: FormData): Promise<voi
   }
 }
 
-export async function updateChangelogPageAction(formData: FormData): Promise<void> {
+export async function updateChangelogPageAction(
+  formData: FormData,
+): Promise<void> {
   await requireAdminOrThrow();
 
   const id = String(formData.get("id") ?? "").trim();
@@ -281,7 +292,7 @@ export async function updateChangelogPageAction(formData: FormData): Promise<voi
   const parsed = changelogPageSchema.safeParse({
     name: String(formData.get("name") ?? "").trim(),
     pathName: String(formData.get("pathName") ?? "").trim(),
-    customDomain: String(formData.get("customDomain") ?? "").trim()
+    customDomain: String(formData.get("customDomain") ?? "").trim(),
   });
 
   if (!parsed.success) {
@@ -292,7 +303,7 @@ export async function updateChangelogPageAction(formData: FormData): Promise<voi
     id,
     name: parsed.data.name,
     pathName: parsed.data.pathName,
-    customDomain: parsed.data.customDomain?.trim() || null
+    customDomain: parsed.data.customDomain?.trim() || null,
   });
 
   invalidateChangelogCache();
@@ -306,7 +317,9 @@ export async function updateChangelogPageAction(formData: FormData): Promise<voi
   }
 }
 
-export async function deleteChangelogPageAction(formData: FormData): Promise<void> {
+export async function deleteChangelogPageAction(
+  formData: FormData,
+): Promise<void> {
   await requireAdminOrThrow();
 
   const id = String(formData.get("id") ?? "").trim();

@@ -1,6 +1,14 @@
 import Link from "next/link";
-import { isAdminAuthenticated, isAdminPasswordConfigured } from "@/lib/admin-auth";
-import { DEFAULT_CHANGELOG_PAGE_ID, getAppSettings, listChangelogPages, listRepoSources } from "@/lib/db";
+import {
+  isAdminAuthenticated,
+  isAdminPasswordConfigured,
+} from "@/lib/admin-auth";
+import {
+  DEFAULT_CHANGELOG_PAGE_ID,
+  getAppSettings,
+  listChangelogPages,
+  listRepoSources,
+} from "@/lib/db";
 import { getPipeOpsSignInUrl } from "@/lib/pipeops-auth";
 import { FormSubmitButton } from "@/components/FormSubmitButton";
 import {
@@ -15,7 +23,7 @@ import {
   updateRootPageAction,
   updateSourceAction,
   moveSourceUpAction,
-  moveSourceDownAction
+  moveSourceDownAction,
 } from "@/app/admin/actions";
 
 export default async function AdminPage(): Promise<JSX.Element> {
@@ -29,16 +37,28 @@ export default async function AdminPage(): Promise<JSX.Element> {
         <header className="admin-header admin-hero">
           <p className="eyebrow">Admin</p>
           <h1>Authenticate to manage changelog pages and sources</h1>
-          <p className="hero-copy">Sign in to configure paths, domains, providers, tokens, and public feed behavior.</p>
+          <p className="hero-copy">
+            Sign in to configure paths, domains, providers, tokens, and public
+            feed behavior.
+          </p>
         </header>
 
         <section className="admin-card auth-card">
           <form action={loginAction} className="admin-grid">
             <label>
               Admin Password
-              <input name="password" type="password" placeholder="Enter ADMIN_PASSWORD" required />
+              <input
+                name="password"
+                type="password"
+                placeholder="Enter ADMIN_PASSWORD"
+                required
+              />
             </label>
-            <FormSubmitButton className="primary-btn" type="submit" pendingLabel="Signing In...">
+            <FormSubmitButton
+              className="primary-btn"
+              type="submit"
+              pendingLabel="Signing In..."
+            >
               Sign In
             </FormSubmitButton>
           </form>
@@ -69,9 +89,12 @@ export default async function AdminPage(): Promise<JSX.Element> {
       <header className="admin-header admin-hero">
         <p className="eyebrow">⬢ Admin</p>
         <h1 className="gradient-text">Releaseboard Control Center</h1>
-        <p className="admin-hero-kicker">Operate every changelog surface from one place.</p>
+        <p className="admin-hero-kicker">
+          Operate every changelog surface from one place.
+        </p>
         <p className="hero-copy">
-          Manage multiple changelog pages, set unique paths/domains, and route repository sources into the right public feed.
+          Manage multiple changelog pages, set unique paths/domains, and route
+          repository sources into the right public feed.
         </p>
 
         <div className="hero-actions">
@@ -84,14 +107,22 @@ export default async function AdminPage(): Promise<JSX.Element> {
           </Link>
 
           <form action={refreshAction}>
-            <FormSubmitButton type="submit" className="ghost-btn" pendingLabel="Refreshing...">
+            <FormSubmitButton
+              type="submit"
+              className="ghost-btn"
+              pendingLabel="Refreshing..."
+            >
               Refresh Cache
             </FormSubmitButton>
           </form>
 
           {hasPassword ? (
             <form action={logoutAction}>
-              <FormSubmitButton type="submit" className="ghost-btn" pendingLabel="Signing Out...">
+              <FormSubmitButton
+                type="submit"
+                className="ghost-btn"
+                pendingLabel="Signing Out..."
+              >
                 Sign Out
               </FormSubmitButton>
             </form>
@@ -99,19 +130,47 @@ export default async function AdminPage(): Promise<JSX.Element> {
         </div>
 
         <div className="admin-kpis" role="list" aria-label="Admin overview">
-          <article className="admin-kpi" role="listitem" style={{ animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "100ms" }}>
+          <article
+            className="admin-kpi"
+            role="listitem"
+            style={{
+              animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+              animationDelay: "100ms",
+            }}
+          >
             <span>Pages</span>
             <strong>{pages.length}</strong>
           </article>
-          <article className="admin-kpi" role="listitem" style={{ animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "200ms" }}>
+          <article
+            className="admin-kpi"
+            role="listitem"
+            style={{
+              animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+              animationDelay: "200ms",
+            }}
+          >
             <span>Sources</span>
             <strong>{sources.length}</strong>
           </article>
-          <article className="admin-kpi" role="listitem" style={{ animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "300ms" }}>
+          <article
+            className="admin-kpi"
+            role="listitem"
+            style={{
+              animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+              animationDelay: "300ms",
+            }}
+          >
             <span>Enabled</span>
             <strong>{enabledSources}</strong>
           </article>
-          <article className="admin-kpi" role="listitem" style={{ animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "400ms" }}>
+          <article
+            className="admin-kpi"
+            role="listitem"
+            style={{
+              animation: "fadeSlideUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+              animationDelay: "400ms",
+            }}
+          >
             <span>Private</span>
             <strong>{privateSources}</strong>
           </article>
@@ -120,15 +179,24 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
       {!hasPassword ? (
         <section className="admin-card warning-card">
-          <strong>⚠ Security warning:</strong> <code>ADMIN_PASSWORD</code> is not set. Anyone with access to this app can change repo tokens.
+          <strong>⚠ Security warning:</strong> <code>ADMIN_PASSWORD</code> is
+          not set. Anyone with access to this app can change repo tokens.
         </section>
       ) : null}
 
       <div className="admin-main-grid">
-        <section className="admin-column" style={{ animation: "fadeSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "250ms" }}>
+        <section
+          className="admin-column"
+          style={{
+            animation: "fadeSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both",
+            animationDelay: "250ms",
+          }}
+        >
           <section className="admin-card admin-section-card">
             <h2>Display Settings</h2>
-            <p className="admin-section-note">Choose what visitors see on `/` by default.</p>
+            <p className="admin-section-note">
+              Choose what visitors see on `/` by default.
+            </p>
             <form action={updateRootPageAction} className="admin-grid">
               <label>
                 Default root page (`/`)
@@ -137,7 +205,11 @@ export default async function AdminPage(): Promise<JSX.Element> {
                   <option value="changelog">Unified changelog feed</option>
                 </select>
               </label>
-              <FormSubmitButton className="primary-btn" type="submit" pendingLabel="Saving...">
+              <FormSubmitButton
+                className="primary-btn"
+                type="submit"
+                pendingLabel="Saving..."
+              >
                 Save Display Settings
               </FormSubmitButton>
             </form>
@@ -145,8 +217,14 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
           <section className="admin-card admin-section-card">
             <h2>Create Changelog Page</h2>
-            <p className="admin-section-note">Create a new public changelog feed with its own route and optional domain.</p>
-            <form action={createChangelogPageAction} className="admin-grid two-col">
+            <p className="admin-section-note">
+              Create a new public changelog feed with its own route and optional
+              domain.
+            </p>
+            <form
+              action={createChangelogPageAction}
+              className="admin-grid two-col"
+            >
               <label>
                 Page Name
                 <input name="name" placeholder="Payments Changelog" required />
@@ -162,7 +240,11 @@ export default async function AdminPage(): Promise<JSX.Element> {
                 <input name="customDomain" placeholder="updates.example.com" />
               </label>
 
-              <FormSubmitButton className="primary-btn" type="submit" pendingLabel="Creating Page...">
+              <FormSubmitButton
+                className="primary-btn"
+                type="submit"
+                pendingLabel="Creating Page..."
+              >
                 Create Page
               </FormSubmitButton>
             </form>
@@ -176,7 +258,10 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
             <section className="admin-list admin-page-list">
               {pages.map((page) => {
-                const pageHref = page.pathName === "changelog" ? "/changelog" : `/${page.pathName}`;
+                const pageHref =
+                  page.pathName === "changelog"
+                    ? "/changelog"
+                    : `/${page.pathName}`;
                 const isDefaultPage = page.id === DEFAULT_CHANGELOG_PAGE_ID;
 
                 return (
@@ -186,7 +271,9 @@ export default async function AdminPage(): Promise<JSX.Element> {
                         <h3>{page.name}</h3>
                         <p className="admin-subtle">
                           Path: /{page.pathName}
-                          {page.customDomain ? ` • Domain: ${page.customDomain}` : ""}
+                          {page.customDomain
+                            ? ` • Domain: ${page.customDomain}`
+                            : ""}
                         </p>
                       </div>
 
@@ -196,9 +283,16 @@ export default async function AdminPage(): Promise<JSX.Element> {
                         </Link>
 
                         {!isDefaultPage ? (
-                          <form action={deleteChangelogPageAction} className="inline-form">
+                          <form
+                            action={deleteChangelogPageAction}
+                            className="inline-form"
+                          >
                             <input type="hidden" name="id" value={page.id} />
-                            <FormSubmitButton type="submit" className="danger-btn" pendingLabel="Deleting Page...">
+                            <FormSubmitButton
+                              type="submit"
+                              className="danger-btn"
+                              pendingLabel="Deleting Page..."
+                            >
                               Delete
                             </FormSubmitButton>
                           </form>
@@ -206,7 +300,10 @@ export default async function AdminPage(): Promise<JSX.Element> {
                       </div>
                     </div>
 
-                    <form action={updateChangelogPageAction} className="admin-grid two-col">
+                    <form
+                      action={updateChangelogPageAction}
+                      className="admin-grid two-col"
+                    >
                       <input type="hidden" name="id" value={page.id} />
 
                       <label>
@@ -216,16 +313,35 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
                       <label>
                         Path Name
-                        <input name="pathName" defaultValue={page.pathName} required disabled={isDefaultPage} />
-                        {isDefaultPage ? <input type="hidden" name="pathName" value={page.pathName} /> : null}
+                        <input
+                          name="pathName"
+                          defaultValue={page.pathName}
+                          required
+                          disabled={isDefaultPage}
+                        />
+                        {isDefaultPage ? (
+                          <input
+                            type="hidden"
+                            name="pathName"
+                            value={page.pathName}
+                          />
+                        ) : null}
                       </label>
 
                       <label className="full-width">
                         Custom Domain (optional)
-                        <input name="customDomain" defaultValue={page.customDomain ?? ""} placeholder="updates.example.com" />
+                        <input
+                          name="customDomain"
+                          defaultValue={page.customDomain ?? ""}
+                          placeholder="updates.example.com"
+                        />
                       </label>
 
-                      <FormSubmitButton className="primary-btn" type="submit" pendingLabel="Saving Page...">
+                      <FormSubmitButton
+                        className="primary-btn"
+                        type="submit"
+                        pendingLabel="Saving Page..."
+                      >
                         Save Page
                       </FormSubmitButton>
                     </form>
@@ -236,10 +352,19 @@ export default async function AdminPage(): Promise<JSX.Element> {
           </section>
         </section>
 
-        <section className="admin-column" style={{ animation: "fadeSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both", animationDelay: "350ms" }}>
+        <section
+          className="admin-column"
+          style={{
+            animation: "fadeSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both",
+            animationDelay: "350ms",
+          }}
+        >
           <section className="admin-card admin-section-card">
             <h2>Add Repository Source</h2>
-            <p className="admin-section-note">Attach repositories across providers and map each one to a target changelog page.</p>
+            <p className="admin-section-note">
+              Attach repositories across providers and map each one to a target
+              changelog page.
+            </p>
             <form action={createSourceAction} className="admin-grid two-col">
               <label>
                 Changelog Page
@@ -281,17 +406,38 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
               <label>
                 Base URL (optional)
-                <input name="baseUrl" placeholder="https://gitlab.com or self-hosted URL" />
+                <input
+                  name="baseUrl"
+                  placeholder="https://gitlab.com or self-hosted URL"
+                />
+              </label>
+
+              <label>
+                Branch (optional)
+                <input
+                  name="branch"
+                  placeholder="main, develop, or leave blank for default"
+                />
               </label>
 
               <label>
                 Releases to fetch
-                <input name="releasesLimit" type="number" min={1} max={25} defaultValue={8} />
+                <input
+                  name="releasesLimit"
+                  type="number"
+                  min={1}
+                  max={25}
+                  defaultValue={8}
+                />
               </label>
 
               <label className="full-width">
                 Access Token (optional)
-                <input name="token" type="password" placeholder="Needed for private repositories" />
+                <input
+                  name="token"
+                  type="password"
+                  placeholder="Needed for private repositories"
+                />
               </label>
 
               <div className="checkbox-row full-width">
@@ -300,11 +446,16 @@ export default async function AdminPage(): Promise<JSX.Element> {
                 </label>
 
                 <label>
-                  <input type="checkbox" name="enabled" defaultChecked /> Enabled in public feed
+                  <input type="checkbox" name="enabled" defaultChecked />{" "}
+                  Enabled in public feed
                 </label>
               </div>
 
-              <FormSubmitButton className="primary-btn" type="submit" pendingLabel="Adding Source...">
+              <FormSubmitButton
+                className="primary-btn"
+                type="submit"
+                pendingLabel="Adding Source..."
+              >
                 Add Source
               </FormSubmitButton>
             </form>
@@ -321,12 +472,19 @@ export default async function AdminPage(): Promise<JSX.Element> {
                 <div className="empty-state">No source connected yet.</div>
               ) : (
                 sources.map((source, index) => {
-                  const sourcePage = pages.find((page) => page.id === source.pageId);
-                  const isFirstInPage = sources[index - 1]?.pageId !== source.pageId;
-                  const isLastInPage = sources[index + 1]?.pageId !== source.pageId;
+                  const sourcePage = pages.find(
+                    (page) => page.id === source.pageId,
+                  );
+                  const isFirstInPage =
+                    sources[index - 1]?.pageId !== source.pageId;
+                  const isLastInPage =
+                    sources[index + 1]?.pageId !== source.pageId;
 
                   return (
-                    <article className="admin-card admin-source-card" key={source.id}>
+                    <article
+                      className="admin-card admin-source-card"
+                      key={source.id}
+                    >
                       <div className="admin-card-top">
                         <div className="admin-title-stack">
                           <h3>{source.displayName}</h3>
@@ -339,11 +497,21 @@ export default async function AdminPage(): Promise<JSX.Element> {
                           <span>{source.provider}</span>
                           <span>{source.isPrivate ? "private" : "public"}</span>
                           <span>{source.enabled ? "enabled" : "disabled"}</span>
-                          <span>{sourcePage ? `/${sourcePage.pathName}` : "unassigned"}</span>
+                          <span>
+                            {sourcePage
+                              ? `/${sourcePage.pathName}`
+                              : "unassigned"}
+                          </span>
                         </div>
 
-                        <div className="admin-inline-actions" style={{ marginLeft: "auto" }}>
-                          <form action={moveSourceUpAction} className="inline-form">
+                        <div
+                          className="admin-inline-actions"
+                          style={{ marginLeft: "auto" }}
+                        >
+                          <form
+                            action={moveSourceUpAction}
+                            className="inline-form"
+                          >
                             <input type="hidden" name="id" value={source.id} />
                             <button
                               type="submit"
@@ -355,7 +523,10 @@ export default async function AdminPage(): Promise<JSX.Element> {
                               ↑
                             </button>
                           </form>
-                          <form action={moveSourceDownAction} className="inline-form">
+                          <form
+                            action={moveSourceDownAction}
+                            className="inline-form"
+                          >
                             <input type="hidden" name="id" value={source.id} />
                             <button
                               type="submit"
@@ -370,7 +541,10 @@ export default async function AdminPage(): Promise<JSX.Element> {
                         </div>
                       </div>
 
-                      <form action={updateSourceAction} className="admin-grid two-col">
+                      <form
+                        action={updateSourceAction}
+                        className="admin-grid two-col"
+                      >
                         <input type="hidden" name="id" value={source.id} />
 
                         <label>
@@ -388,7 +562,10 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
                         <label>
                           Provider
-                          <select name="provider" defaultValue={source.provider}>
+                          <select
+                            name="provider"
+                            defaultValue={source.provider}
+                          >
                             <option value="github">GitHub</option>
                             <option value="gitlab">GitLab</option>
                             <option value="bitbucket">Bitbucket</option>
@@ -398,22 +575,47 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
                         <label>
                           Display Name
-                          <input name="displayName" defaultValue={source.displayName} required />
+                          <input
+                            name="displayName"
+                            defaultValue={source.displayName}
+                            required
+                          />
                         </label>
 
                         <label>
                           Owner / Org / Workspace
-                          <input name="owner" defaultValue={source.owner} required />
+                          <input
+                            name="owner"
+                            defaultValue={source.owner}
+                            required
+                          />
                         </label>
 
                         <label>
                           Repository
-                          <input name="repo" defaultValue={source.repo} required />
+                          <input
+                            name="repo"
+                            defaultValue={source.repo}
+                            required
+                          />
                         </label>
 
                         <label>
                           Base URL (optional)
-                          <input name="baseUrl" defaultValue={source.baseUrl ?? ""} placeholder="Provider API or host URL" />
+                          <input
+                            name="baseUrl"
+                            defaultValue={source.baseUrl ?? ""}
+                            placeholder="Provider API or host URL"
+                          />
+                        </label>
+
+                        <label>
+                          Branch (optional)
+                          <input
+                            name="branch"
+                            defaultValue={source.branch ?? ""}
+                            placeholder="main, develop, or leave blank for default"
+                          />
                         </label>
 
                         <label>
@@ -432,26 +634,45 @@ export default async function AdminPage(): Promise<JSX.Element> {
                           <input
                             name="token"
                             type="password"
-                            placeholder={source.hasToken ? "Stored token exists" : "No token configured"}
+                            placeholder={
+                              source.hasToken
+                                ? "Stored token exists"
+                                : "No token configured"
+                            }
                           />
                         </label>
 
                         <div className="checkbox-row full-width">
                           <label>
-                            <input type="checkbox" name="isPrivate" defaultChecked={source.isPrivate} /> Private repository
+                            <input
+                              type="checkbox"
+                              name="isPrivate"
+                              defaultChecked={source.isPrivate}
+                            />{" "}
+                            Private repository
                           </label>
 
                           <label>
-                            <input type="checkbox" name="enabled" defaultChecked={source.enabled} /> Enabled
+                            <input
+                              type="checkbox"
+                              name="enabled"
+                              defaultChecked={source.enabled}
+                            />{" "}
+                            Enabled
                           </label>
 
                           <label>
-                            <input type="checkbox" name="clearToken" /> Remove saved token
+                            <input type="checkbox" name="clearToken" /> Remove
+                            saved token
                           </label>
                         </div>
 
                         <div className="admin-inline-actions full-width">
-                          <FormSubmitButton className="primary-btn" type="submit" pendingLabel="Saving...">
+                          <FormSubmitButton
+                            className="primary-btn"
+                            type="submit"
+                            pendingLabel="Saving..."
+                          >
                             Save Changes
                           </FormSubmitButton>
                         </div>
@@ -459,7 +680,11 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
                       <form action={deleteSourceAction} className="inline-form">
                         <input type="hidden" name="id" value={source.id} />
-                        <FormSubmitButton type="submit" className="danger-btn" pendingLabel="Deleting...">
+                        <FormSubmitButton
+                          type="submit"
+                          className="danger-btn"
+                          pendingLabel="Deleting..."
+                        >
                           Delete Source
                         </FormSubmitButton>
                       </form>

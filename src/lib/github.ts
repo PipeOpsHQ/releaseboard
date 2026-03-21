@@ -1,4 +1,8 @@
-import type { AggregatedRelease, GitProvider, RepoSourceWithToken } from "@/lib/types";
+import type {
+  AggregatedRelease,
+  GitProvider,
+  RepoSourceWithToken,
+} from "@/lib/types";
 import { fetchWithRetry } from "@/lib/fetch-utils";
 
 interface GitHubRelease {
@@ -116,7 +120,9 @@ function isBitbucketServerApiBase(apiBase: string): boolean {
 }
 
 function inferApiBaseUrl(source: RepoSourceWithToken): string {
-  const configuredBase = source.baseUrl ? trimTrailingSlashes(source.baseUrl) : null;
+  const configuredBase = source.baseUrl
+    ? trimTrailingSlashes(source.baseUrl)
+    : null;
 
   if (source.provider === "github") {
     if (!configuredBase) {
@@ -153,7 +159,9 @@ function inferApiBaseUrl(source: RepoSourceWithToken): string {
   }
 
   if (configuredBase.includes("api.bitbucket.org")) {
-    return configuredBase.endsWith("/2.0") ? configuredBase : `${configuredBase}/2.0`;
+    return configuredBase.endsWith("/2.0")
+      ? configuredBase
+      : `${configuredBase}/2.0`;
   }
 
   if (/\/rest\/api\/\d+\.\d+$/i.test(configuredBase)) {
@@ -168,7 +176,9 @@ function inferApiBaseUrl(source: RepoSourceWithToken): string {
 }
 
 function inferWebBaseUrl(source: RepoSourceWithToken): string {
-  const configuredBase = source.baseUrl ? trimTrailingSlashes(source.baseUrl) : null;
+  const configuredBase = source.baseUrl
+    ? trimTrailingSlashes(source.baseUrl)
+    : null;
 
   if (source.provider === "github") {
     if (!configuredBase) {
@@ -215,16 +225,22 @@ function buildCommitId(sourceId: string, sha: string): string {
   return `${sourceId}:commit:${sha}`;
 }
 
-function formatApiError(provider: GitProvider, status: number, detail: string): string {
+function formatApiError(
+  provider: GitProvider,
+  status: number,
+  detail: string,
+): string {
   const label = provider[0]?.toUpperCase() + provider.slice(1);
   const statusMessage = detail.slice(0, 140).trim();
-  return statusMessage ? `${label} API ${status}: ${statusMessage}` : `${label} API returned ${status}`;
+  return statusMessage
+    ? `${label} API ${status}: ${statusMessage}`
+    : `${label} API returned ${status}`;
 }
 
 function createHeaders(source: RepoSourceWithToken): Headers {
   const headers = new Headers({
     Accept: "application/json",
-    "User-Agent": "pipeops-changelog"
+    "User-Agent": "pipeops-changelog",
   });
 
   if (!source.token) {
@@ -242,7 +258,10 @@ function createHeaders(source: RepoSourceWithToken): Headers {
   }
 
   if (source.provider === "bitbucket" && source.token.includes(":")) {
-    headers.set("Authorization", `Basic ${Buffer.from(source.token).toString("base64")}`);
+    headers.set(
+      "Authorization",
+      `Basic ${Buffer.from(source.token).toString("base64")}`,
+    );
     return headers;
   }
 
@@ -250,11 +269,18 @@ function createHeaders(source: RepoSourceWithToken): Headers {
   return headers;
 }
 
-function mapGitHubCommitsToEntries(source: RepoSourceWithToken, commits: GitHubCommit[]): AggregatedRelease[] {
+function mapGitHubCommitsToEntries(
+  source: RepoSourceWithToken,
+  commits: GitHubCommit[],
+): AggregatedRelease[] {
   return commits.map<AggregatedRelease>((commit) => {
     const message = (commit.commit.message || "").trim();
-    const title = message.split("\n")[0]?.trim() || `Commit ${commit.sha.slice(0, 7)}`;
-    const excerpt = markdownToPlainText(message).slice(0, COMMITS_PREVIEW_LIMIT);
+    const title =
+      message.split("\n")[0]?.trim() || `Commit ${commit.sha.slice(0, 7)}`;
+    const excerpt = markdownToPlainText(message).slice(
+      0,
+      COMMITS_PREVIEW_LIMIT,
+    );
 
     return {
       id: buildCommitId(source.id, commit.sha),
@@ -270,16 +296,25 @@ function mapGitHubCommitsToEntries(source: RepoSourceWithToken, commits: GitHubC
       htmlUrl: commit.html_url,
       prerelease: false,
       draft: false,
-      publishedAt: commit.commit.author?.date ?? new Date(0).toISOString()
+      publishedAt: commit.commit.author?.date ?? new Date(0).toISOString(),
     };
   });
 }
 
-function mapGitLabCommitsToEntries(source: RepoSourceWithToken, commits: GitLabCommit[]): AggregatedRelease[] {
+function mapGitLabCommitsToEntries(
+  source: RepoSourceWithToken,
+  commits: GitLabCommit[],
+): AggregatedRelease[] {
   return commits.map<AggregatedRelease>((commit) => {
     const message = (commit.message || "").trim();
-    const title = commit.title?.trim() || message.split("\n")[0]?.trim() || `Commit ${commit.short_id}`;
-    const excerpt = markdownToPlainText(message).slice(0, COMMITS_PREVIEW_LIMIT);
+    const title =
+      commit.title?.trim() ||
+      message.split("\n")[0]?.trim() ||
+      `Commit ${commit.short_id}`;
+    const excerpt = markdownToPlainText(message).slice(
+      0,
+      COMMITS_PREVIEW_LIMIT,
+    );
 
     return {
       id: buildCommitId(source.id, commit.id),
@@ -295,20 +330,28 @@ function mapGitLabCommitsToEntries(source: RepoSourceWithToken, commits: GitLabC
       htmlUrl: commit.web_url,
       prerelease: false,
       draft: false,
-      publishedAt: commit.authored_date ?? new Date(0).toISOString()
+      publishedAt: commit.authored_date ?? new Date(0).toISOString(),
     };
   });
 }
 
-function mapBitbucketCommitsToEntries(source: RepoSourceWithToken, commits: BitbucketCommit[]): AggregatedRelease[] {
+function mapBitbucketCommitsToEntries(
+  source: RepoSourceWithToken,
+  commits: BitbucketCommit[],
+): AggregatedRelease[] {
   const webBase = inferWebBaseUrl(source);
 
   return commits.map<AggregatedRelease>((commit) => {
     const message = (commit.message || "").trim();
     const shortHash = commit.hash.slice(0, 8);
     const title = message.split("\n")[0]?.trim() || `Commit ${shortHash}`;
-    const excerpt = markdownToPlainText(message).slice(0, COMMITS_PREVIEW_LIMIT);
-    const htmlUrl = commit.links?.html?.href ?? `${webBase}/${source.owner}/${source.repo}/commits/${commit.hash}`;
+    const excerpt = markdownToPlainText(message).slice(
+      0,
+      COMMITS_PREVIEW_LIMIT,
+    );
+    const htmlUrl =
+      commit.links?.html?.href ??
+      `${webBase}/${source.owner}/${source.repo}/commits/${commit.hash}`;
 
     return {
       id: buildCommitId(source.id, commit.hash),
@@ -324,14 +367,14 @@ function mapBitbucketCommitsToEntries(source: RepoSourceWithToken, commits: Bitb
       htmlUrl,
       prerelease: false,
       draft: false,
-      publishedAt: commit.date ?? new Date(0).toISOString()
+      publishedAt: commit.date ?? new Date(0).toISOString(),
     };
   });
 }
 
 function mapBitbucketServerCommitsToEntries(
   source: RepoSourceWithToken,
-  commits: BitbucketServerCommit[]
+  commits: BitbucketServerCommit[],
 ): AggregatedRelease[] {
   const webBase = inferWebBaseUrl(source);
 
@@ -339,7 +382,10 @@ function mapBitbucketServerCommitsToEntries(
     const message = (commit.message || "").trim();
     const shortHash = (commit.displayId || commit.id).slice(0, 8);
     const title = message.split("\n")[0]?.trim() || `Commit ${shortHash}`;
-    const excerpt = markdownToPlainText(message).slice(0, COMMITS_PREVIEW_LIMIT);
+    const excerpt = markdownToPlainText(message).slice(
+      0,
+      COMMITS_PREVIEW_LIMIT,
+    );
     const fallbackUrl = `${webBase}/projects/${source.owner}/repos/${source.repo}/commits/${commit.id}`;
     const htmlUrl = commit.links?.self?.[0]?.href ?? fallbackUrl;
 
@@ -359,101 +405,137 @@ function mapBitbucketServerCommitsToEntries(
       draft: false,
       publishedAt: commit.authorTimestamp
         ? new Date(commit.authorTimestamp).toISOString()
-        : new Date(0).toISOString()
+        : new Date(0).toISOString(),
     };
   });
 }
 
 async function fetchGitHubCommitFallback(
-  source: RepoSourceWithToken
+  source: RepoSourceWithToken,
 ): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
   const apiBase = inferApiBaseUrl(source);
-  const url = new URL(`${apiBase}/repos/${source.owner}/${source.repo}/commits`);
+  const url = new URL(
+    `${apiBase}/repos/${source.owner}/${source.repo}/commits`,
+  );
   url.searchParams.set("per_page", String(source.releasesLimit));
+  if (source.branch) {
+    url.searchParams.set("sha", source.branch);
+  }
 
   let response: Response;
   try {
     response = await fetchWithRetry(url.toString(), {
       headers: createHeaders(source),
-      next: { revalidate: 300 }
+      next: { revalidate: 300 },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown network error";
+    const message =
+      error instanceof Error ? error.message : "Unknown network error";
     return { releases: [], error: `Network error: ${message}` };
   }
 
   if (!response.ok) {
     const detail = await response.text();
-    return { releases: [], error: formatApiError(source.provider, response.status, detail) };
+    return {
+      releases: [],
+      error: formatApiError(source.provider, response.status, detail),
+    };
   }
 
   const payload = (await response.json()) as GitHubCommit[];
   return {
     releases: mapGitHubCommitsToEntries(source, payload),
-    error: null
+    error: null,
   };
 }
 
 async function fetchGitLabCommitFallback(
-  source: RepoSourceWithToken
+  source: RepoSourceWithToken,
 ): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
   const apiBase = inferApiBaseUrl(source);
   const projectId = encodeURIComponent(`${source.owner}/${source.repo}`);
   const url = new URL(`${apiBase}/projects/${projectId}/repository/commits`);
   url.searchParams.set("per_page", String(source.releasesLimit));
+  if (source.branch) {
+    url.searchParams.set("ref_name", source.branch);
+  }
 
   let response: Response;
   try {
     response = await fetchWithRetry(url.toString(), {
       headers: createHeaders(source),
-      next: { revalidate: 300 }
+      next: { revalidate: 300 },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown network error";
+    const message =
+      error instanceof Error ? error.message : "Unknown network error";
     return { releases: [], error: `Network error: ${message}` };
   }
 
   if (!response.ok) {
     const detail = await response.text();
-    return { releases: [], error: formatApiError(source.provider, response.status, detail) };
+    return {
+      releases: [],
+      error: formatApiError(source.provider, response.status, detail),
+    };
   }
 
   const payload = (await response.json()) as GitLabCommit[];
   return {
     releases: mapGitLabCommitsToEntries(source, payload),
-    error: null
+    error: null,
   };
 }
 
 async function fetchBitbucketCommitFallback(
-  source: RepoSourceWithToken
+  source: RepoSourceWithToken,
 ): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
   const apiBase = inferApiBaseUrl(source);
   const useServerApi = isBitbucketServerApiBase(apiBase);
   const url = useServerApi
-    ? new URL(`${apiBase}/projects/${encodeURIComponent(source.owner)}/repos/${encodeURIComponent(source.repo)}/commits`)
+    ? new URL(
+        `${apiBase}/projects/${encodeURIComponent(source.owner)}/repos/${encodeURIComponent(source.repo)}/commits`,
+      )
     : new URL(`${apiBase}/repositories/${source.owner}/${source.repo}/commits`);
 
   if (useServerApi) {
-    url.searchParams.set("limit", String(Math.min(100, Math.max(1, source.releasesLimit))));
+    url.searchParams.set(
+      "limit",
+      String(Math.min(100, Math.max(1, source.releasesLimit))),
+    );
   } else {
-    url.searchParams.set("pagelen", String(Math.min(100, Math.max(1, source.releasesLimit))));
+    url.searchParams.set(
+      "pagelen",
+      String(Math.min(100, Math.max(1, source.releasesLimit))),
+    );
+  }
+
+  if (source.branch) {
+    if (useServerApi) {
+      url.searchParams.set("until", source.branch);
+    } else {
+      url.searchParams.set("include", source.branch);
+    }
   }
 
   let response: Response;
   try {
     response = await fetchWithRetry(url.toString(), {
       headers: createHeaders(source),
-      next: { revalidate: 300 }
+      next: { revalidate: 300 },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown network error";
+    const message =
+      error instanceof Error ? error.message : "Unknown network error";
     return { releases: [], error: `Network error: ${message}` };
   }
 
   if (!response.ok) {
     const detail = await response.text();
-    return { releases: [], error: formatApiError(source.provider, response.status, detail) };
+    return {
+      releases: [],
+      error: formatApiError(source.provider, response.status, detail),
+    };
   }
 
   if (useServerApi) {
@@ -462,7 +544,7 @@ async function fetchBitbucketCommitFallback(
 
     return {
       releases: mapBitbucketServerCommitsToEntries(source, commits),
-      error: null
+      error: null,
     };
   }
 
@@ -470,31 +552,38 @@ async function fetchBitbucketCommitFallback(
   const commits = payload.values || [];
   return {
     releases: mapBitbucketCommitsToEntries(source, commits),
-    error: null
+    error: null,
   };
 }
 
 async function fetchGitHubSource(
-  source: RepoSourceWithToken
+  source: RepoSourceWithToken,
 ): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
   const apiBase = inferApiBaseUrl(source);
-  const url = new URL(`${apiBase}/repos/${source.owner}/${source.repo}/releases`);
+  const url = new URL(
+    `${apiBase}/repos/${source.owner}/${source.repo}/releases`,
+  );
   url.searchParams.set("per_page", String(source.releasesLimit));
 
   let response: Response;
   try {
     response = await fetchWithRetry(url.toString(), {
       headers: createHeaders(source),
-      next: { revalidate: 300 }
+      next: { revalidate: 300 },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown network error";
+    const message =
+      error instanceof Error ? error.message : "Unknown network error";
     return { releases: [], error: `Network error: ${message}` };
   }
 
   if (!response.ok) {
     const detail = await response.text();
-    const releaseError = formatApiError(source.provider, response.status, detail);
+    const releaseError = formatApiError(
+      source.provider,
+      response.status,
+      detail,
+    );
 
     // Stop early if hit a Github Rate limit so we don't spam the commit API additionally
     if (response.status === 403 && detail.includes("rate limit")) {
@@ -512,10 +601,15 @@ async function fetchGitHubSource(
 
   const payload = (await response.json()) as GitHubRelease[];
   const releases = payload
-    .filter((release) => Boolean(release.published_at || release.name || release.tag_name))
+    .filter((release) =>
+      Boolean(release.published_at || release.name || release.tag_name),
+    )
     .map<AggregatedRelease>((release) => {
       const body = release.body ?? "";
-      const bodyExcerpt = markdownToPlainText(body).slice(0, RELEASES_PREVIEW_LIMIT);
+      const bodyExcerpt = markdownToPlainText(body).slice(
+        0,
+        RELEASES_PREVIEW_LIMIT,
+      );
 
       return {
         id: buildReleaseId(source.id, release.id),
@@ -531,7 +625,7 @@ async function fetchGitHubSource(
         htmlUrl: release.html_url,
         prerelease: release.prerelease,
         draft: release.draft,
-        publishedAt: release.published_at ?? new Date(0).toISOString()
+        publishedAt: release.published_at ?? new Date(0).toISOString(),
       };
     });
 
@@ -548,7 +642,7 @@ async function fetchGitHubSource(
 }
 
 async function fetchGitLabSource(
-  source: RepoSourceWithToken
+  source: RepoSourceWithToken,
 ): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
   const apiBase = inferApiBaseUrl(source);
   const webBase = inferWebBaseUrl(source);
@@ -560,16 +654,21 @@ async function fetchGitLabSource(
   try {
     response = await fetchWithRetry(url.toString(), {
       headers: createHeaders(source),
-      next: { revalidate: 300 }
+      next: { revalidate: 300 },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown network error";
+    const message =
+      error instanceof Error ? error.message : "Unknown network error";
     return { releases: [], error: `Network error: ${message}` };
   }
 
   if (!response.ok) {
     const detail = await response.text();
-    const releaseError = formatApiError(source.provider, response.status, detail);
+    const releaseError = formatApiError(
+      source.provider,
+      response.status,
+      detail,
+    );
 
     // Stop early if hit a Gitlab Rate limit
     if (response.status === 429) {
@@ -587,10 +686,15 @@ async function fetchGitLabSource(
 
   const payload = (await response.json()) as GitLabRelease[];
   const releases = payload
-    .filter((release) => Boolean(release.tag_name || release.name || release.released_at))
+    .filter((release) =>
+      Boolean(release.tag_name || release.name || release.released_at),
+    )
     .map<AggregatedRelease>((release) => {
       const body = release.description ?? "";
-      const bodyExcerpt = markdownToPlainText(body).slice(0, RELEASES_PREVIEW_LIMIT);
+      const bodyExcerpt = markdownToPlainText(body).slice(
+        0,
+        RELEASES_PREVIEW_LIMIT,
+      );
       const htmlUrl = `${webBase}/${source.owner}/${source.repo}/-/releases/${release.tag_name}`;
 
       return {
@@ -607,7 +711,10 @@ async function fetchGitLabSource(
         htmlUrl,
         prerelease: false,
         draft: false,
-        publishedAt: release.released_at ?? release.created_at ?? new Date(0).toISOString()
+        publishedAt:
+          release.released_at ??
+          release.created_at ??
+          new Date(0).toISOString(),
       };
     });
 
@@ -624,41 +731,56 @@ async function fetchGitLabSource(
 }
 
 async function fetchGiteaSource(
-  source: RepoSourceWithToken
+  source: RepoSourceWithToken,
 ): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
   const apiBase = inferApiBaseUrl(source);
-  const url = new URL(`${apiBase}/repos/${source.owner}/${source.repo}/releases`);
+  const url = new URL(
+    `${apiBase}/repos/${source.owner}/${source.repo}/releases`,
+  );
   url.searchParams.set("limit", String(source.releasesLimit));
 
   let response: Response;
   try {
     response = await fetchWithRetry(url.toString(), {
       headers: createHeaders(source),
-      next: { revalidate: 300 }
+      next: { revalidate: 300 },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown network error";
+    const message =
+      error instanceof Error ? error.message : "Unknown network error";
     return { releases: [], error: `Network error: ${message}` };
   }
 
-  async function fetchGiteaCommitFallback(): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
-    const commitUrl = new URL(`${apiBase}/repos/${source.owner}/${source.repo}/commits`);
+  async function fetchGiteaCommitFallback(): Promise<{
+    releases: AggregatedRelease[];
+    error: string | null;
+  }> {
+    const commitUrl = new URL(
+      `${apiBase}/repos/${source.owner}/${source.repo}/commits`,
+    );
     commitUrl.searchParams.set("limit", String(source.releasesLimit));
+    if (source.branch) {
+      commitUrl.searchParams.set("sha", source.branch);
+    }
 
     let commitResponse: Response;
     try {
       commitResponse = await fetchWithRetry(commitUrl.toString(), {
         headers: createHeaders(source),
-        next: { revalidate: 300 }
+        next: { revalidate: 300 },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown network error";
+      const message =
+        error instanceof Error ? error.message : "Unknown network error";
       return { releases: [], error: `Network error: ${message}` };
     }
 
     if (!commitResponse.ok) {
       const detail = await commitResponse.text();
-      return { releases: [], error: formatApiError(source.provider, commitResponse.status, detail) };
+      return {
+        releases: [],
+        error: formatApiError(source.provider, commitResponse.status, detail),
+      };
     }
 
     const payload = (await commitResponse.json()) as GiteaCommit[];
@@ -668,16 +790,20 @@ async function fetchGiteaSource(
         payload.map((commit) => ({
           sha: commit.sha,
           html_url: commit.html_url,
-          commit: commit.commit
-        }))
+          commit: commit.commit,
+        })),
       ),
-      error: null
+      error: null,
     };
   }
 
   if (!response.ok) {
     const detail = await response.text();
-    const releaseError = formatApiError(source.provider, response.status, detail);
+    const releaseError = formatApiError(
+      source.provider,
+      response.status,
+      detail,
+    );
 
     // Stop early if hit a Gitea Rate limit
     if (response.status === 429) {
@@ -693,10 +819,15 @@ async function fetchGiteaSource(
 
   const payload = (await response.json()) as GiteaRelease[];
   const releases = payload
-    .filter((release) => Boolean(release.published_at || release.name || release.tag_name))
+    .filter((release) =>
+      Boolean(release.published_at || release.name || release.tag_name),
+    )
     .map<AggregatedRelease>((release) => {
       const body = release.body ?? "";
-      const bodyExcerpt = markdownToPlainText(body).slice(0, RELEASES_PREVIEW_LIMIT);
+      const bodyExcerpt = markdownToPlainText(body).slice(
+        0,
+        RELEASES_PREVIEW_LIMIT,
+      );
 
       return {
         id: buildReleaseId(source.id, release.id),
@@ -712,7 +843,7 @@ async function fetchGiteaSource(
         htmlUrl: release.html_url,
         prerelease: release.prerelease,
         draft: release.draft,
-        publishedAt: release.published_at ?? new Date(0).toISOString()
+        publishedAt: release.published_at ?? new Date(0).toISOString(),
       };
     });
 
@@ -730,7 +861,7 @@ async function fetchGiteaSource(
 }
 
 export async function fetchReleasesForSource(
-  source: RepoSourceWithToken
+  source: RepoSourceWithToken,
 ): Promise<{ releases: AggregatedRelease[]; error: string | null }> {
   if (source.provider === "github") {
     return fetchGitHubSource(source);
